@@ -18,12 +18,12 @@ jobs:
       - uses: docker://pandoc/core:2.9
         with:
           args: >-
-            -s comutation-manuscript.tex 
+            -s main.tex 
             -f latex 
             -t docx 
-            -o output/comutation-manuscript.docx 
+            -o output/report.pdf
             --bibliography references.bib 
       - uses: actions/upload-artifact@master
         with:
-          name: manuscript
+          name: report
           path: output
