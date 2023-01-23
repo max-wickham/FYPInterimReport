@@ -17,6 +17,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Install TeXlive
         run: sudo apt-get update && sudo apt-get install texlive texlive-publishers texlive-science latexmk cm-super
+      - name: Install Bibtex
+        run: sudo apt-get install texlive-bibtex-extra biber
       - name: LaTeX compile
         working-directory: ${{ env.DIR }}
         #run: latexmk -pdf -bibtex ${{ env.FILE }}
