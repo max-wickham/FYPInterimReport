@@ -1,8 +1,17 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
+\usepackage{blindtext}
+\usepackage{titlesec}
+\usepackage{amsmath}
+\usepackage{biblatex} %Imports biblatex package
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\addbibresource{references.bib} %Import the bibliography file
 
-\title{FYPInterimReport}
-\author{mw1919 }
+\title{Deep Deconstructed Learning \\
+ Interim Report}
+\author{Max Wickham }
 \date{January 2023}
 
 \begin{document}
@@ -10,5 +19,234 @@
 \maketitle
 
 \section{Introduction}
+
+\section{Project Specification}
+
+% The Project Specification should state clearly
+% what the project is intended to deliver, including
+% all hardware, software, simulation, and analytical
+% work, and provide some motivation.
+
+\section{Background}
+
+
+% The Background section must outline the
+% necessary background to the project, stating how
+% it is important for the project work. For example:
+% review of related literature, analysis of
+% competing products, technical specifications of
+% hardware or software standards, electronic
+% components, necessary software tools,
+% background theory. The contents of this section
+% will vary for different projects, and in many
+% cases the background reading will have been
+% completed – but if not you should be in a
+% position to list what remains to be done (e.g. a set
+% of research papers to read and understand). A
+% good benchmark of progress here is that you
+% have accumulated and briefly considered (though
+% may not need to read in detail) at least 30
+% references to background material. Your
+% literature survey in the Interim Report will save
+% time at the end of the project and allow this
+% element of your final report to receive timely
+% feedback from your supervisor so the final write-
+% up can be improved.
+
+
+% - Reward Function in normal reinforcement learning
+    % - Markov decision process
+    % - On policy vs Off policy, TD vs Monto Carlow
+    % - Q learning DONE, NEEDS MORE
+    % - Deep Q Learning DONE
+    % - Double deep q learning DONE
+    % - Bellman equation DONE, NEEDS MORE
+% - Stochastic Games
+% - Problems arising when implementing general human multi agent reinforcement learning
+    % - Combanitorial Complexity
+    % - Multi Dimesnsion Learning Objectives
+    % - None Stationary Issues
+    % - Frequency of updating different agents
+% - Using correlations in model building
+% - Agent Model Design
+
+Before being able to start building multi-agent models a comprehensive review of single-agent reinforcement learning methods was required in order to both design the models used within the project itself as well as build single-agent models to compare the performance of different designs given different tasks. 
+
+Reinforcement learning models are generally split into two broad categories, Model-Free and Model-Based, both of which will be discussed here. 
+
+% TODO into to markov process
+
+\subsection{Model-Free}
+Model-Free based RL makes decisions during the training process without any kind of prediction of what the next or future states will be, instead simply giving an action recommendation based on the current state and continuous feedback and is itself split into two categories, Q-Learning and Policy-Optimisation \cite{Huang2020Model-basedLearning}.
+ \\
+ \subsubsection{Q-Learning}
+Q-Learning is a method of updating the reward given a certain action with a certain state in a table in order to be able to compute the cumulative reward of taking any action at any state. This table is updated using the Bellman Equation described by Richard Bellman in 1954\cite{RichardBellman1954TheProgramming}.
+
+
+\begin{align*}
+&    S: \textbf{State Space} \\
+&    A: \textbf{Action Space} \\
+&    R: \textbf{Reward Function} \\
+&    \gamma: \textbf{Reward discount rate} \\
+&    \pi : S \rightarrow A: \textbf{The policy we are trying to learn}
+&    \\
+&    \text{We want to give a value to each state given an action }\\
+&    Q(s,a) = E[\sum^{\infty}_{k=0}\gamma^k r_{t+k+1}] \\
+&    \text{This q-value can be updated with the bellman equation} \\
+&    Q^*(s,a) = E[r_{t+1} + \gamma \max_{a'} Q^*(s',a')] \\
+&    Q^{n+1}(s,a) = (1-\alpha)Q^{n}(s,a) + \alpha(r_{t+1} + \gamma \max_{a'} Q^{n}(s',a'))
+\end{align*}
+
+It has been show that updating $Q(s,a)$ using this method will ensure convergence to a $Q^*(s,a)$ that implements the optimum policy\cite{Watkins1992Q-Learning}. This idea is extremely important in many RL techniques.
+\\
+Since the size of the state and action space in most problems is extremely large, storing every state-action pair in a table with the associated values is infeasible. Therefore many methods try and find a function that approximates the q-function, $Q^*(s,a) \approx Q(s,a)$, often using neural networks or other machine learning techniques. In this 2013 paper from DeepMind \cite{MnihPlayingLearning} it is shown that this method of Q-function approximation can be used to play emulations of Atari games with good performance. The function approximating $Q(s,a ; \theta)$ uses the value $\theta$ as the parameters for the neural network used to approximate the function. This parameter must be updated at each training step in a manner that tends towards the optimum policy described using the Bellman Equation.
+\\ 
+\sloppy The algorithm described in this paper differs from traditional Q-learning\cite{SuttonReinforcementProgress} by using a method called "experience replay" that stores the values $(s_t, a_t, r_t, s_{t+1}, a_{t+a})$ in a memory set. Then during training random subsets of this memory are taken to form mini-batches used to train the model. The state values represent the entire history of inputs to the model up to time $t$ along with the actions taken at each step, with the inputs being the values of each pixel in the given game. The state is described in this way to ensure the system can be described as a Markov-Decision process which is a requirement for Q-Learning. The reward is the change in game score and is specific to each game type. In the paper instead of using the full set of pixels, some preprocessing was done to reduce dimensionality in addition to only using the last 4 frames of history as input to the model as opposed to the entire history. By only using the last few frames the input to the model is maintained at a fixed size. The full algorithm, "Deep Q-learning with Experience Replay", as described by this paper is shown in Algorithm~\ref{alg:DeepQ}. The full algorithm from the paper has been included here as many references will be made to it throughout the report. 
+
+\begin{algorithm}
+\caption{Deep Q-learning with Experience Replay \cite{MnihPlayingLearning}}\label{alg:DeepQ}
+\begin{algorithmic}
+\State  Initialise replay  memory $\mathcal{D}$  to capacity $\mathcal{N}$
+\State Initialise action-value function $Q$ with random weights
+\For{episode $= 1,M$ }
+    \State Initialise sequence $s_1 = \{x_1\}$ and preprocessed sequenced $\phi_1 = \phi(s_1)$
+    \For{$t=1,T$}
+        \State With random probability $\eta$ select a random action $a_t$
+        \State otherwise select $a_t=\max_aQ^*(\phi(s_t),a;\theta)$
+        \State Execute action $a_t$ in emulator and observe reward $r_t$ and image $x_{t+1}$
+        \State Set $s_{t+1} = s_t,a_t,x_{t+1}$ and preprocess $\phi_{t+1} = \phi(s_{t+1})$
+        \State Store transition $(\phi_t, a_t, r_t, \phi_{t+1})$ in $\mathcal{D}$
+        \State Sample random mini-batch of transitions $(\phi_j, a_j, r_j, \phi_{j+1})$ from $\mathcal{D}$
+        \State Set $y_j = \begin{cases}
+                    r_j & \text{for terminal } \phi_{j+1}\\
+                    r_j + \gamma \max_{a'}Q(\phi_{j+1},a';\theta) & \text{ for non terminal } \phi_{j+1}
+                \end{cases}
+                $
+        \State Perform a gradient step on $(y_j - Q(\phi_j, a_j; \theta))^2$
+    \EndFor
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\\
+
+Some adaptations to the "Deep Q-learning with Experience Replay" algorithm were suggested in a 2015 paper\cite{vanHasselt2015DeepQ-learning}. It is proposed that using the same function approximate to both evaluate actions and to select actions results in overestimated values being more frequently chosen, a common problem in Q-Learning\cite{Thrun1993IssuesLearning}. The 2015 paper utilises "Double Q-Learning", first described by van Hasselt in 2010\cite{VanHasselt2010DoubleQ-learning} applied to Deep Q-Learning to reduce the overestimation errors. This method uses two models trained in parallel for each of the action selections used in Algorithm~\ref{alg:DeepQ}. One model for choosing the action to take and one for adjusting the value of $y_j$ using the discount reward. The secondary model is updated to match the original model periodically. 
+The change described resulted in a large increase in performance across all Atari 2600 games, often with scores several times better than those achieved using the original Deep Q-Learning approach. 
+% Distributional Reinforcement Learning with Quantile Regression
+
+\\
+\sloppy In 2017 a new approach was described by researchers at DeepMind and the University of Cambridge named "Distributional Reinforcement Learning with Quantile Regression"\cite{Dabney2017DistributionalRegression} that provided further performance gains on Atari 2600 games. In this paper, methods are proposed for learning the "Value Distribution" as opposed to the "Value Function" used in traditional RL. The agent environment is described using the Markov decision process $(\mathcal{X}, \mathcal{A}, \mathcal{R}, \mathcal{P}, \gamma)$, where $\mathcal{X}$ is the state space $\mathcal{A}$ the action space, $\mathcal{R}$ the random variable reward function, $P(x'|x;a)$ the probability of transitioning to state $x'$ given action $a$ and $\gamma \in [0,1]$ is the discount factor. An approximator $Z^\pi(x,a)$ is found that gives the probability distribution of the cumulative reward of a given action, where the standard $Q^\pi(x,a)$ would be the mean of this distribution. This method was able to improve on the performance of Double-DQN. 
+
+TODO add description of Markov Decision Process and better explination of final algorithm
+
+\subsection{Policy Optimisation}
+
+In addition to Q-Learning Policy Optimisation is also used in Model-Free RL. Policy Optimisation algorithms use an On-Policy as opposed to an Off-Policy like Q-Learning ADD REFERENCE. This means that updates are only made using samples collected with the current model version. Policy Optimisations methods are formulated using $\pi_\theta(a|s)$ \cite{Huang2020Model-basedLearning} with $\theta$ optimised using gradient descent over a performance index $J(\pi_{\theta})$. This formulation allows for learning over the policy space instead of the reward space meaning that if the reward function is too complex, the policy optimisation method may outperform DQN. Policy Optimisation also has the additional benefit that it can be applied to a continuous action space whereas DQN must discretise the action space which may be expensive. 
+
+An algorithm proposed in a 2017 paper\cite{Schulman2017ProximalAlgorithms} improved on existing Policy Optimisation techniques whilst being simpler to implement than existing state-of-the-art Policy Optimisation methods. This algorithm is called "Proximal Policy Optimisation" and variations of it are the current state of the art in on-policy learning ADD REFERENCE. The algorithm described in this paper is shown in Algorithm~\ref{alg:PPO}.
+
+\begin{algorithm}
+\caption{PPO, Actor-Critic Style \cite{Schulman2017ProximalAlgorithms}}\label{alg:PPO}
+\begin{algorithmic}
+
+\For{$\text{iteration} = 1,2,....$}
+    \For{$\text{actor}=1,2,...N$}
+        \State Run policy $\pi_{\theta \text{old}}$ in environment for $T$ time-steps
+        \State Compute advantage estimates $\hat{A}_1,...,\hat{A}_T$
+    \EndFor
+    \State Optimise surrogate $L$ wrt $\theta$, with $K$ epochs and mini-batch size $M \le NT$
+    \State $\theta_{\text{old}} \leftarrow \theta$
+\EndFor
+
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Comparison of Policy Optimisation vs Q-Learning}
+
+Generally, Policy-Optimisations methods have many advantages over Q-Learning-based approaches. These include faster learning, greater applicability as well as the ability to be used with a stochastic or continuous action space\cite{NachumBridgingLearning}. Despite these advantages, policy optimisation methods can suffer from poor sample efficiency\cite{NachumBridgingLearning}, in addition to being more likely to remain stuck at local mini compared to Off-Policy methods. This poor sample efficiency comes from the fact that Q-Learning methods can be trained from any trajectory sampled from the environment whilst Policy-Optimisation must collect samples using the current policy. 
+\\ 
+Current comparisons appear to find that DQN-related algorithms are often able to beat PPO-related algorithms in many games such as the Atari 2600 set. This paper\cite{Zakharenkov2021DeepVizDoom} demonstrates DQN marginally outperforming PPO, especially navigation. Research done by OpenAi demonstrates similar results for PPO compared to state-of-the-art DQN algorithms such as Rainbow\cite{NicholGottaRL}. However, this paper found that the Joint-PPO method was able to marginally outperform the DQN-based Rainbow algorithm. The Joint-PPO pre-trains the model on a set of test levels and uses this pretrained model as the initialisation for the model used on the test levels. When using the same pretraining method for the Rainbow algorithm no noticeable improvement was found. This demonstrates the increased ability of PPO to transfer learning from other environments to a test environment. 
+
+TODO add more information on policy optimisation algorithms
+
+% policy gradient
+
+% trust region policy optimisation
+
+\subsection{Model Based RL}
+
+Unlike Model-Free RL, model-based RL allows for the agent to make predictions about the future of the state space using a model that approximates the environment\cite{Huang2020Model-basedLearning}. Examples of where this technique is extremely applicable exist in games such as chess where the exact rules of the environment can easily be programmed. Model-Based RL can also be employed in situations where the environment can't be so easily described in which case a Model must be trained to approximate the environment. However, model-based RL often has many disadvantages due to inaccuracies in the model. In the case of Atari 2600-style games, it is very difficult to learn a model that is accurate enough to be used in decision-making \cite{JannerWhenOptimization}
+
+TODO FLESH OUT
+
+\subsection{Multi Agent RL}
+
+% Multi Agent Games types
+
+% Analysis of avaialb einformation for MARL
+
+% Markov Games
+
+% Extensive Form Games
+
+% Common difficulties in MARL
+
+
+\section{Implementation}
+
+% The Implementation section details technical
+% work completed. It need not be as comprehensive
+% as the description you write for your final report
+% and is intended to summarise your technical
+% progress. In a few cases, where the project has
+% very significant background, this section may be
+% 9omitted and a much longer Literature Review
+% substituted.
+
+\section{Project Plan}
+
+% The Project Plan is a preliminary breakdown of
+% the work in the remainder of the project. You
+% should identify a set of milestones and provide a
+% realistic estimate of the time of each of these if
+% all goes well, taking into account all your other
+% commitments (modules, revision, exams). It will
+% help your supervisor, and you, for you to
+% estimate what fraction of your time each week,
+% including vacations, you will be able to spend on
+% project work. The project plan will also detail
+% fallback positions in case any stage of the
+% development goes wrong. In the early stages of
+% your project work the times in this plan are
+% guesses. However as the project progresses
+% keeping track of and revising your initial
+% estimates, and if necessary altering the proposed
+% work, is a vital way to ensure that the project is
+% finished in time.
+
+\section{Evaluation Plan}
+
+% The Evaluation Plan should detail how you
+% expect to measure the success of the project. In
+% particular it should document any tests that are
+% required to ensure that the project deliverable(s)
+% function correctly, together with (where
+% appropriate) details of experiments required to
+% evaluate the work with respect to other products
+% or research results.
+
+\section{Ethical Legal and Safety Plan}
+
+% The Ethical, Legal and Safety Plan must detail
+% what are the issues in this are relevant to your
+% project, showing how you will comply with best
+% practice. If there are no such issues (the case for
+% 80% of all projects) you must nevertheless show
+% here that you have considered these issues and
+% detail why they will not apply to your project.
+% Refer to information on the project web pages
+% about Ethical, Legal and Safety matters.
+
+\printbibliography
 
 \end{document}
