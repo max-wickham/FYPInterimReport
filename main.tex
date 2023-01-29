@@ -6,6 +6,7 @@
 \usepackage{biblatex} %Imports biblatex package
 \usepackage{algorithm}
 \usepackage{algpseudocode}
+\usepackage{cleveref}
 \usepackage[a4paper, total={6in, 8in}]{geometry}
 \addbibresource{references.bib} %Import the bibliography file
 
@@ -27,6 +28,7 @@
 % all hardware, software, simulation, and analytical
 % work, and provide some motivation.
 
+\newpage
 \section{Background}
 
 
@@ -70,17 +72,38 @@
 % - Using correlations in model building
 % - Agent Model Design
 
-Before being able to start building multi-agent models a comprehensive review of single-agent reinforcement learning methods was required in order to both design the models used within the project itself as well as build single-agent models to compare the performance of different designs given different tasks. 
+Before being able to start building multi-agent models, a comprehensive review of single-agent reinforcement learning methods was required to both design the models used within the project itself as well as build single-agent models to compare the performance of different designs given different tasks.
 
-Reinforcement learning models are generally split into two broad categories, Model-Free and Model-Based, both of which will be discussed here. 
+Reinforcement learning models are generally split into two broad categories, Model-Free and Model-Based, both of which will be discussed here \cite{Huang2020Model-basedLearning}. A common requirement in many algorithms in both of these categories is the ability to describe a problem as a Markov decision process, a requirement that is difficult to maintain when extending to multi-agent problems. The form of a Markov decision process as described by Bellman in 1957\cite{RichardBellman1957AProcess} is described in equation~\ref{eqn:markov} 
+
+\begin{subequations}\label{eqn:markov}
+\begin{align}
+    & S: \text{ Set of states} \\
+    & A: \text{ Set of actions} \\
+    & P(s_{t+1} | s_t, a_t): \text{ Probability of moving from state } s_{t+1} \text{ given the current state and action} \\
+    & R(s): \text{ The reward for moving to a state}
+\end{align}
+\end{subequations}
+
+The MDP can be described with a tuple of these four values, $(S, A, P(s_{t+1} | s_t, a_t), R(s)$, and has the requirement that the probability of moving from one state to another given a specific action is only dependent on the current state and not the history of previous states. It will be shown later that this requirement is far easier to model in single-agent RL than in a multi-agent system, becoming a significant limitation in multi-agent RL. The general goal of solving an MDP is to discover the optimum policy which maps a state to a distribution of action probabilities to maximise the cumulative discount reward as shown in equation~\ref{eqn:markovpolicy}.
+
+\begin{subequations}\label{eqn:markovpolicy}
+\begin{align}
+    & \text{Policy:} \\
+    & \pi : \mathcal{S} \rightarrow \Delta(\mathcal{A}) \\
+    & \text{Cumulative Discount Reward:} \\
+    & E[\sum_{t \ge 0} \gamma^t R(s_t, a_t, s_{t+1} | a_t ~ \pi(\dot | _t), s_0]
+\end{align}
+\end{subequations}
+% TODO add reference
 
 % TODO into to markov process
 
 \subsection{Model-Free}
-Model-Free based RL makes decisions during the training process without any kind of prediction of what the next or future states will be, instead simply giving an action recommendation based on the current state and continuous feedback and is itself split into two categories, Q-Learning and Policy-Optimisation \cite{Huang2020Model-basedLearning}.
+Model-Free based RL makes decisions during the training process without any prediction of what the following or future states will be, instead simply giving an action recommendation based on the current state and continuous feedback and is itself split into two major categories, Q-Learning and Policy-Optimisation \cite{Huang2020Model-basedLearning}.
  \\
  \subsubsection{Q-Learning}
-Q-Learning is a method of updating the reward given a certain action with a certain state in a table in order to be able to compute the cumulative reward of taking any action at any state. This table is updated using the Bellman Equation described by Richard Bellman in 1954\cite{RichardBellman1954TheProgramming}.
+Q-Learning is a method of updating the reward given a particular action with a given state in a table in order to be able to compute the cumulative reward of taking any action at any state. This table is updated using the Bellman Equation described by Richard Bellman in 1954\cite{RichardBellman1954TheProgramming}.
 
 
 \begin{align*}
@@ -97,11 +120,20 @@ Q-Learning is a method of updating the reward given a certain action with a cert
 &    Q^{n+1}(s,a) = (1-\alpha)Q^{n}(s,a) + \alpha(r_{t+1} + \gamma \max_{a'} Q^{n}(s',a'))
 \end{align*}
 
-It has been show that updating $Q(s,a)$ using this method will ensure convergence to a $Q^*(s,a)$ that implements the optimum policy\cite{Watkins1992Q-Learning}. This idea is extremely important in many RL techniques.
+Using this formulation of the Q-function, we can describe the Q-function and V-function (state value function) for a given policy within an MDP as shown in equation~\ref{eqn:qfunctionvfunction}
+
+\begin{subequations}\label{eqn:qfunctionvfunction}
+\begin{align}
+    & Q_\pi(s,a) = E[\sum_{t \ge 0} \gamma^t R(s_t, a_t, s_{t+1} | a_t ~ \pi(\dot | _t), a_0 = a, s_0 = sZ] \\
+    & V_\pi(s) = E[\sum_{t \ge 0} \gamma^t R(s_t, a_t, s_{t+1} | a_t ~ \pi(\dot | _t), s_0 = sZ] \\
+\end{align}
+\end{subequations}
+
+It has been shown that updating $Q(s,a)$ using this method will ensure convergence to a $Q^*(s,a)$ that implements the optimum policy\cite{Watkins1992Q-Learning}. This idea is fundamental in many RL techniques.
 \\
-Since the size of the state and action space in most problems is extremely large, storing every state-action pair in a table with the associated values is infeasible. Therefore many methods try and find a function that approximates the q-function, $Q^*(s,a) \approx Q(s,a)$, often using neural networks or other machine learning techniques. In this 2013 paper from DeepMind \cite{MnihPlayingLearning} it is shown that this method of Q-function approximation can be used to play emulations of Atari games with good performance. The function approximating $Q(s,a ; \theta)$ uses the value $\theta$ as the parameters for the neural network used to approximate the function. This parameter must be updated at each training step in a manner that tends towards the optimum policy described using the Bellman Equation.
+Since the size of the state and action space in most problems is extremely large, storing every state-action pair in a table with the associated values is infeasible and therefore, many methods try and find a function that approximates the q-function, $Q^*(s,a) \approx Q(s,a)$, often using neural networks or other machine learning techniques. In this 2013 paper from DeepMind \cite{MnihPlayingLearning}, it is shown that this method of Q-function approximation can be used to play emulations of Atari games with good performance. The function approximator used in the paper, $Q(s,a ; \theta)$, uses the value $\theta$ as the parameters for the neural network used to approximate the function. This parameter must be updated at each training step in a manner that tends towards the optimum policy described using the Bellman Equation. This set of Atari 2600 games appears to be a common metric of the performance of RL algorithms. 
 \\ 
-\sloppy The algorithm described in this paper differs from traditional Q-learning\cite{SuttonReinforcementProgress} by using a method called "experience replay" that stores the values $(s_t, a_t, r_t, s_{t+1}, a_{t+a})$ in a memory set. Then during training random subsets of this memory are taken to form mini-batches used to train the model. The state values represent the entire history of inputs to the model up to time $t$ along with the actions taken at each step, with the inputs being the values of each pixel in the given game. The state is described in this way to ensure the system can be described as a Markov-Decision process which is a requirement for Q-Learning. The reward is the change in game score and is specific to each game type. In the paper instead of using the full set of pixels, some preprocessing was done to reduce dimensionality in addition to only using the last 4 frames of history as input to the model as opposed to the entire history. By only using the last few frames the input to the model is maintained at a fixed size. The full algorithm, "Deep Q-learning with Experience Replay", as described by this paper is shown in Algorithm~\ref{alg:DeepQ}. The full algorithm from the paper has been included here as many references will be made to it throughout the report. 
+\sloppy The algorithm described in this paper differs from traditional Q-learning\cite{SuttonReinforcementProgress} by using a method called "experience replay" that stores the values $(s_t, a_t, r_t, s_{t+1}, a_{t+a})$ in a memory set. Then during training, random subsets of this memory are taken to form mini-batches used to train the model. The state values represent the entire history of inputs to the model up to time $t$, along with the actions taken at each step, with the inputs being the values of each pixel in the given game. The state is described in this way to ensure the system  maintains the properties of a Markov-Decision process which is a requirement for Q-Learning, and the reward value is the change in game score and is specific to each game type. If only the current frame were used as the state, the probability of moving to another state would not always be consistent as the frame itself does not contain time-dependent information such as velocities; however, by combing the history of frames seen as the current state all the necessary information to form a system with consistent state change probabilities is maintained.  In the paper, instead of using the full set of pixels, some preprocessing was done to reduce dimensionality in addition to only using the last four frames of history as input to the model as opposed to the entire history. By only using the last few frames, the input to the model is maintained at a fixed size, making the neural network easier to implement. The complete algorithm, "Deep Q-learning with Experience Replay", as described by this paper, is shown in Algorithm~\ref{alg:DeepQ}. The complete algorithm from the paper has been included here, as many references will be made to it throughout the report. 
 
 \begin{algorithm}
 \caption{Deep Q-learning with Experience Replay \cite{MnihPlayingLearning}}\label{alg:DeepQ}
@@ -131,19 +163,27 @@ Since the size of the state and action space in most problems is extremely large
 \\
 
 Some adaptations to the "Deep Q-learning with Experience Replay" algorithm were suggested in a 2015 paper\cite{vanHasselt2015DeepQ-learning}. It is proposed that using the same function approximate to both evaluate actions and to select actions results in overestimated values being more frequently chosen, a common problem in Q-Learning\cite{Thrun1993IssuesLearning}. The 2015 paper utilises "Double Q-Learning", first described by van Hasselt in 2010\cite{VanHasselt2010DoubleQ-learning} applied to Deep Q-Learning to reduce the overestimation errors. This method uses two models trained in parallel for each of the action selections used in Algorithm~\ref{alg:DeepQ}. One model for choosing the action to take and one for adjusting the value of $y_j$ using the discount reward. The secondary model is updated to match the original model periodically. 
-The change described resulted in a large increase in performance across all Atari 2600 games, often with scores several times better than those achieved using the original Deep Q-Learning approach. 
+The change described resulted in a significant increase in performance across all Atari 2600 games, often with scores several times better than those achieved using the original Deep Q-Learning approach. 
 % Distributional Reinforcement Learning with Quantile Regression
 
 \\
-\sloppy In 2017 a new approach was described by researchers at DeepMind and the University of Cambridge named "Distributional Reinforcement Learning with Quantile Regression"\cite{Dabney2017DistributionalRegression} that provided further performance gains on Atari 2600 games. In this paper, methods are proposed for learning the "Value Distribution" as opposed to the "Value Function" used in traditional RL. The agent environment is described using the Markov decision process $(\mathcal{X}, \mathcal{A}, \mathcal{R}, \mathcal{P}, \gamma)$, where $\mathcal{X}$ is the state space $\mathcal{A}$ the action space, $\mathcal{R}$ the random variable reward function, $P(x'|x;a)$ the probability of transitioning to state $x'$ given action $a$ and $\gamma \in [0,1]$ is the discount factor. An approximator $Z^\pi(x,a)$ is found that gives the probability distribution of the cumulative reward of a given action, where the standard $Q^\pi(x,a)$ would be the mean of this distribution. This method was able to improve on the performance of Double-DQN. 
+\sloppy In 2017, a new approach was described by DeepMind and the University of Cambridge researchers named "Distributional Reinforcement Learning with Quantile Regression"\cite{Dabney2017DistributionalRegression} that provided further performance gains on Atari 2600 games. This paper proposes methods for learning the "Value Distribution" instead of the "Value Function" used in traditional RL. The agent environment is described using the Markov decision process $(\mathcal{X}, \mathcal{A}, \mathcal{R}, \mathcal{P}, \gamma)$, where $\mathcal{X}$ is the state space $\mathcal{A}$ the action space, $\mathcal{R}$ the random variable reward function, $P(x'|x;a)$ the probability of transitioning to state $x'$ given action $a$ and $\gamma \in [0,1]$ is the discount factor. An approximator $Z^\pi(x,a)$ is found that gives the probability distribution of the cumulative reward of a given action, where the standard $Q^\pi(x,a)$ would be the mean of this distribution. This method was able to improve on the performance of Double-DQN. 
 
 TODO add description of Markov Decision Process and better explination of final algorithm
 
-\subsection{Policy Optimisation}
+\subsubsection{Policy Optimisation}
 
-In addition to Q-Learning Policy Optimisation is also used in Model-Free RL. Policy Optimisation algorithms use an On-Policy as opposed to an Off-Policy like Q-Learning ADD REFERENCE. This means that updates are only made using samples collected with the current model version. Policy Optimisations methods are formulated using $\pi_\theta(a|s)$ \cite{Huang2020Model-basedLearning} with $\theta$ optimised using gradient descent over a performance index $J(\pi_{\theta})$. This formulation allows for learning over the policy space instead of the reward space meaning that if the reward function is too complex, the policy optimisation method may outperform DQN. Policy Optimisation also has the additional benefit that it can be applied to a continuous action space whereas DQN must discretise the action space which may be expensive. 
+In addition to Q-Learning, Policy Optimisation is also used in Model-Free RL. Policy Optimisation algorithms use an On-Policy instead of an Off-Policy like Q-Learning ADD REFERENCE. This means that updates are only made using samples collected with the current model version. Policy Optimisations methods are formulated using $\pi_\theta(a|s)$ \cite{Huang2020Model-basedLearning} with $\theta$ optimised using gradient ascent over a performance index $J(\pi_{\theta})$. This formulation allows for learning over the policy space instead of the reward space, meaning that if the reward function is too complex, the policy optimisation method may outperform DQN. Policy Optimisation also has the additional benefit that it can be applied to a continuous action space, whereas DQN must discretise the action space, which may be expensive. 
 
-An algorithm proposed in a 2017 paper\cite{Schulman2017ProximalAlgorithms} improved on existing Policy Optimisation techniques whilst being simpler to implement than existing state-of-the-art Policy Optimisation methods. This algorithm is called "Proximal Policy Optimisation" and variations of it are the current state of the art in on-policy learning ADD REFERENCE. The algorithm described in this paper is shown in Algorithm~\ref{alg:PPO}.
+Policy gradient methods iteratively improve on the current policy by creating an estimate for the policy gradient to increase the expected performance for a policy, $J(\pi_\theta)$. A common form of this gradient estimator, according to a paper from OpenAi \cite{Schulman2017ProximalAlgorithms}, is shown in equation~\ref{eqn:loggradient}.
+\begin{align}
+\label{eqn:loggradient}
+    & E_{\tau ~ \pi_\theta}[\nabla_\theta \log(\pi_\theta(a_t,|s_t)R(\tau)]
+\end{align}
+
+Here $\pi_\theta$ is a stochastic policy which maps a state and an action to the probability of taking that action, unlike the deterministic policies mentioned earlier that map a state directly to an action, and the $E_{\tau ~ \pi_\theta}$ represents an average over a set of training samples. A complete derivation of this log gradient can be found at \cite{OpenAIOpenAIOptimisation}
+ 
+An algorithm proposed in a 2017 paper\cite{Schulman2017ProximalAlgorithms} improved on existing Policy Optimisation techniques whilst being simpler to implement than existing state-of-the-art Policy Optimisation methods. This algorithm is called "Proximal Policy Optimisation", and variations of it are the current state of the art in on-policy learning ADD REFERENCE. The algorithm described in this paper is shown in Algorithm~\ref{alg:PPO}.
 
 \begin{algorithm}
 \caption{PPO, Actor-Critic Style \cite{Schulman2017ProximalAlgorithms}}\label{alg:PPO}
@@ -158,14 +198,28 @@ An algorithm proposed in a 2017 paper\cite{Schulman2017ProximalAlgorithms} impro
     \State $\theta_{\text{old}} \leftarrow \theta$
 \EndFor
 
+
 \end{algorithmic}
 \end{algorithm}
 
-\subsection{Comparison of Policy Optimisation vs Q-Learning}
+The advantage estimates used in the algorithm are described by equation~\ref{eqn:advantagefunction} taken from OpenAi\cite{OpenAIOpenAIOptimisation} and describe an estimate for the increase in expected reward of taking a specific action as opposed to taking a random action according to the distribution given by the policy $\pi$. These advantage estimates computed at a set of time steps by several actors can be used to compute a loss function for each sample allowing for the training of the policy model\cite{Schulman2017ProximalAlgorithms}, with the paper providing a lot of information on how best to compute these advantages and the resultant loss. 
 
-Generally, Policy-Optimisations methods have many advantages over Q-Learning-based approaches. These include faster learning, greater applicability as well as the ability to be used with a stochastic or continuous action space\cite{NachumBridgingLearning}. Despite these advantages, policy optimisation methods can suffer from poor sample efficiency\cite{NachumBridgingLearning}, in addition to being more likely to remain stuck at local mini compared to Off-Policy methods. This poor sample efficiency comes from the fact that Q-Learning methods can be trained from any trajectory sampled from the environment whilst Policy-Optimisation must collect samples using the current policy. 
+\begin{align}
+\label{eqn:advantagefunction}
+    A_\pi(s,a) = Q_\pi(s,a) - V_\pi(s) 
+\end{align}
+
+
+% TODO add section describing general equations in policy optimisation, such as gradient function
+
+
+\subsubsection{Comparison of Policy Optimisation vs Q-Learning}
+
+Generally, Policy-Optimisations methods have many advantages over Q-Learning-based approaches. These include faster learning, greater applicability, and the ability to be used with a stochastic or continuous action space\cite{NachumBridgingLearning}. Despite these advantages, policy optimisation methods can suffer from poor sample efficiency\cite{NachumBridgingLearning}, in addition to being more likely to remain stuck at local mini compared to Off-Policy methods. This poor sample efficiency comes from Q-Learning methods being trained from any trajectory sampled from the environment, whilst Policy-Optimisation must collect samples using the current policy. 
 \\ 
-Current comparisons appear to find that DQN-related algorithms are often able to beat PPO-related algorithms in many games such as the Atari 2600 set. This paper\cite{Zakharenkov2021DeepVizDoom} demonstrates DQN marginally outperforming PPO, especially navigation. Research done by OpenAi demonstrates similar results for PPO compared to state-of-the-art DQN algorithms such as Rainbow\cite{NicholGottaRL}. However, this paper found that the Joint-PPO method was able to marginally outperform the DQN-based Rainbow algorithm. The Joint-PPO pre-trains the model on a set of test levels and uses this pretrained model as the initialisation for the model used on the test levels. When using the same pretraining method for the Rainbow algorithm no noticeable improvement was found. This demonstrates the increased ability of PPO to transfer learning from other environments to a test environment. 
+Current comparisons appear to find that DQN-related algorithms are often able to beat PPO-related algorithms in many games, such as the Atari 2600 set. This paper\cite{Zakharenkov2021DeepVizDoom} demonstrates DQN marginally outperforming PPO, especially in navigation. Research done by OpenAi demonstrates similar results for PPO compared to state-of-the-art DQN algorithms such as Rainbow\cite{NicholGottaRL}. However, this paper found that the Joint-PPO method was able to outperform the DQN-based Rainbow algorithm marginally. The Joint-PPO pre-trains the model on a set of test levels and uses this pretrained model as the initialisation for the model used on the test levels. No noticeable improvement was found when using the same pretraining method for the Rainbow algorithm. This demonstrates the increased ability of PPO to transfer learning from other environments to a test environment. 
+
+Due to the fact that both model types have advantages in different situations and have been shown to achieve similar performance in Atari 2600 games, both will be tested in the project to investigate their respective applicability. It may even be the case that different components of the multi-agent models may implement either Policy-Optimisation or Q-Learning-based algorithms in conjunction. 
 
 TODO add more information on policy optimisation algorithms
 
@@ -175,11 +229,21 @@ TODO add more information on policy optimisation algorithms
 
 \subsection{Model Based RL}
 
-Unlike Model-Free RL, model-based RL allows for the agent to make predictions about the future of the state space using a model that approximates the environment\cite{Huang2020Model-basedLearning}. Examples of where this technique is extremely applicable exist in games such as chess where the exact rules of the environment can easily be programmed. Model-Based RL can also be employed in situations where the environment can't be so easily described in which case a Model must be trained to approximate the environment. However, model-based RL often has many disadvantages due to inaccuracies in the model. In the case of Atari 2600-style games, it is very difficult to learn a model that is accurate enough to be used in decision-making \cite{JannerWhenOptimization}
+Unlike Model-Free RL, model-based RL allows for the agent to make predictions about the future of the state space using a model that approximates the environment\cite{Huang2020Model-basedLearning}. Examples of where this technique is highly applicable exist in games such as chess, where the exact rules of the environment can easily be programmed. Model-Based RL can also be employed in situations where the environment can't be so easily described, in which case a Model must be trained to approximate the environment. However, model-based RL often has many disadvantages due to inaccuracies in the model and in the case of Atari 2600-style games, it is challenging to learn a model that is accurate enough to be used in decision-making \cite{JannerWhenOptimization}. Due to the apparent lack of applicability in the literature for this model type with Atari 2600-style games, the project will not focus on this form of model. 
 
-TODO FLESH OUT
 
 \subsection{Multi Agent RL}
+
+% TODO intro
+
+The fundamental problem facing multi-agent RL as opposed to single-agent systems is that as agents learn in parallel, the environment around them changes, resulting in a loss of the Markov property \cite{Zhang2019Multi-AgentAlgorithms}. Additional challenges also exist in handling the multi-dimensional objectives of agents who may not be cooperative, resulting in the need to discover equilibria on top of the actual task of deciding agent objectives. The design of agent objectives results in three forms of a multi-agent system:
+\begin{enumerate}
+    \item Fully Cooperative
+    \item Fully Adversarial 
+    \item Combination of Cooperative and Adversarial 
+\end{enumerate}
+
+Although fundamentally similar, these three categories have some specific challenges to overcome, some of which will be outlined here.
 
 % Multi Agent Games types
 
